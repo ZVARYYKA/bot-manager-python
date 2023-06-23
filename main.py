@@ -8,6 +8,11 @@ bot = telebot.TeleBot(bot_token)
 
 conn = sqlite3.connect('bot_manager_database.db')
 
+
+@bot.message_handler(commands=['myid'])
+def get_user_id(message):
+    # Отправляем пользователю его user_id
+    bot.send_message(message.chat.id, f"Ваш user_id: {message.chat.id}")
 @bot.message_handler(commands=['start'])
 def start(message):
 
@@ -42,7 +47,7 @@ def start(message):
 #     bot.send_message(call.message.chat.id, "Всё заебись")
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'start_button')
+@bot.callback_query_handler(func=lambda call: call.data in ['start_button', 'to_start_callback_handler_button'])
 def start_callback_handler(call):
     #Создаем панель
     markup2 = types.InlineKeyboardMarkup() 
@@ -64,6 +69,8 @@ def start_callback_handler(call):
 def client_callback_handler(call):
     bot.answer_callback_query(call.id)
 
+    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
+    
     # Создаем соединение с базой данных
     conn = sqlite3.connect('bot_manager_database.db')
 
@@ -74,6 +81,8 @@ def client_callback_handler(call):
 
     # Создаем панель
     markup3 = types.InlineKeyboardMarkup()
+
+
 
     # Создаем кнопку для каждого артиста
     for artist in artists:
@@ -89,8 +98,31 @@ def client_callback_handler(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('arrrrartist_'))
 def artist_callback_handler(call):
+    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
     artist_name = call.data.split('_')[1]
     bot.send_message(call.message.chat.id, f"Вы выбрали артиста: {artist_name}. Напишите ваше сообщение.")
+    bot.register_next_step_handler(call.message, handle_user_message, artist_name)
+
+def handle_user_message(message, artist_name):
+    # Отправляем сообщение артисту
+    send_message_to_artist(artist_name, message.text)
+    bot.send_message(message.chat.id, "Ваше сообщение отправлено артисту. Ожидайте ответа.")
+    # # Отправляем сообщение артисту
+    # send_message_to_artist(artist_name, message.text)
+def send_message_to_artist(artist_name, message_text):
+    # Создаем соединение с базой данных
+    conn = sqlite3.connect('bot_manager_database.db')
+
+    # Получаем курсор для выполнения SQL-запросов
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM artists WHERE artist_name = '{artist_name}'")
+    artist = cursor.fetchone()
+
+    # Отправляем сообщение артисту
+    bot.send_message(artist[2], message_text)
+
+    # Закрываем соединение с базой данных
+    conn.close()
 
     
 # @bot.callback_query_handler(func=lambda call: True) 
@@ -115,48 +147,42 @@ def artist_callback_handler(call):
 #ЧАСТЬ МАКСИМУЛ ПРЕЙНА
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'artist_button')
-def artist_callback_handler(call):
+@bot.callback_query_handler(func=lambda call: call.data in ['artist_button', 'to_artist_name_callback_handler_button'])
+def artist_name_callback_handler(call):
     bot.answer_callback_query(call.id)
     bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
-    #Создаем панель
-    markup_artist1 = types.InlineKeyboardMarkup() 
-    #Создаем кнопку
-    back_button = types.InlineKeyboardButton('Назад', callback_data='back_button')
-    #добавляем кнопку на панель
-    markup_artist1.add(back_button)
-    bot.send_message(call.message.chat.id, "Введите ваше имя/никнейм. С его помощью клиенты смогут обратиться к вам", reply_markup=markup_artist1)
-    bot.register_next_step_handler(call.message, handle_artist_name)
 
-@bot.callback_query_handler(func=lambda call: call.data == 'back_button')
-def artist_callback_handler(call):
-    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
+    markup_artist1 = types.InlineKeyboardMarkup() 
+
+    to_start_callback_handler_button = types.InlineKeyboardButton('Назад', callback_data='to_start_callback_handler_button')
+
+    markup_artist1.add(to_start_callback_handler_button)
+    bot.send_message(call.message.chat.id, "Введите ваше имя/никнейм. С его помощью клиенты смогут обратиться к вам", reply_markup=markup_artist1)
+
+
+    bot.register_next_step_handler(call.message, handle_artist_name)    
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'to_start_callback_handler_button')
+def artist_back_callback_handler(call):
     start_callback_handler(call)
 
 def handle_artist_name(message):
-    artist_name = message.text
-    bot.send_message(message.chat.id, f"Ваше имя {artist_name}, не так ли?")
 
-
-    #bot.register_next_step_handler(message, handle_artist_description)
-
-# @bot.message_handler(content_type=['text'])
-# def artist_name_handler(message):
-#     last_message = bot.get_message_handler(message.chat.id).last_message
+    markup_artist2 = types.InlineKeyboardMarkup() 
     
-#     print(last_message)
-#     artist_name = message.text
+    to_artist_circle_callback_handler_button = types.InlineKeyboardButton('Все верно', callback_data='to_artist_circle_callback_handler_button')
+    to_artist_name_callback_handler_button = types.InlineKeyboardButton('Ввести еще раз', callback_data='to_artist_name_callback_handler_button')
+    markup_artist2.add(to_artist_circle_callback_handler_button, to_artist_name_callback_handler_button)
+
+    artist_name = message.text
+    bot.send_message(message.chat.id, f"Ваше имя {artist_name}, не так ли?", reply_markup=markup_artist2)
+    
+@bot.callback_query_handler(func=lambda call: call.data == 'to_artist_circle_callback_handler_button')
+def artist_circle_callback_handler(call):
+    bot.send_message(call.message.chat.id, "Молодец, побрейся")
 
 
-
-
-# def handle_name(message):
-#     # Сохраняем имя в переменную или базу данных
-#     artist_name = message.text
-#     # Отправляем сообщение с просьбой ввести контактные данные
-#     bot.send_message(message.chat.id, f"Отлично, {artist_name}! Теперь введите свои контактные данные")
-#     # Регистрируем обработчик для сообщения с контактными данными
-#     #bot.register_next_step_handler(message, handle_contacts, name)
 
 bot.polling(none_stop=True)
 
