@@ -12,6 +12,7 @@ conn = sqlite3.connect('bot_manager_database.db')
 users_dict = dict()
 admin_dict = dict()
 artist_confirmation = dict()
+message_and_admin_dict = dict()
 
 pers_dict = dict()
 
@@ -150,13 +151,22 @@ def start_callback_handler(call):
         #Создаем панель
         markup2 = types.InlineKeyboardMarkup() 
         #Создаем кнопку
-        client_button = types.InlineKeyboardButton('Клиент', callback_data='client_button')
-        artist_button = types.InlineKeyboardButton('Артист', callback_data='artist_button')
+        if check_user_language(call.message) == [('ru',)]:
+            client_button = types.InlineKeyboardButton('Клиент', callback_data='client_button')
+            artist_button = types.InlineKeyboardButton('Артист', callback_data='artist_button')
+            markup2.add(client_button, artist_button)
+            bot.send_message(call.message.chat.id, "Как вы хотите использовать бота?", reply_markup=markup2)
+        elif check_user_language(call.message) == [('en',)]:
+            client_button = types.InlineKeyboardButton('Client', callback_data='client_button')
+            artist_button = types.InlineKeyboardButton('Artist', callback_data='artist_button')
+            markup2.add(client_button, artist_button)
+            bot.send_message(call.message.chat.id, "How you want use bot?", reply_markup=markup2)
         #добавляем кнопку на панель
-        markup2.add(client_button, artist_button)
+        
         
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "Как вы хотите использовать бота?", reply_markup=markup2)
+        
+        
         
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
     
@@ -188,11 +198,18 @@ def client_callback_handler(call):
             artist_button = types.InlineKeyboardButton(artist[1], callback_data=f"arrrrartist_{artist[1]}")  # Используем имя артиста в качестве callback_data
             markup3.add(artist_button)
 
+        
+    # Отправляем сообщение с панелью кнопок
+    if check_user_language(call.message) == [('ru',)]:
         end_button = types.InlineKeyboardButton("Назад", callback_data=f"to_start_callback_handler_button")
         markup3.add(end_button)
-    # Отправляем сообщение с панелью кнопок
         bot.send_message(call.message.chat.id, "Выберите артиста", reply_markup=markup3)
-
+        
+    elif check_user_language(call.message) == [('en',)]:
+        end_button = types.InlineKeyboardButton("Back", callback_data=f"to_start_callback_handler_button")
+        markup3.add(end_button)
+        bot.send_message(call.message.chat.id, "Choose an artist", reply_markup=markup3)
+        
     # Закрываем соединение с базой данных
         conn.close()
 
@@ -204,7 +221,10 @@ def artist_callback_handler(call):
     else:
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
         artist_name = call.data.split('_')[1]
-        bot.send_message(call.message.chat.id, f"Вы выбрали артиста: {artist_name}. Напишите ваш номер телефона.")
+        if check_user_language(call.message) == [('ru',)]:
+            bot.send_message(call.message.chat.id, f"Вы выбрали артиста: {artist_name}. Напишите ваш номер телефона.")
+        elif check_user_language(call.message) == [('en',)]:
+            bot.send_message(call.message.chat.id, f"You choose artist: {artist_name}. Write your phone number.")
         bot.register_next_step_handler(call.message, handle_phone_user_message, artist_name)
 
 def handle_phone_user_message(message, artist_name):
@@ -213,7 +233,10 @@ def handle_phone_user_message(message, artist_name):
     else:
         phone_number = message.text
         if phone_number.isdigit():
-            bot.send_message(message.chat.id, "Ваш номер телефона услышан. Напишите ваше ФИО.")
+            if check_user_language(message) == [('ru',)]:
+                bot.send_message(message.chat.id, "Ваш номер телефона услышан. Напишите ваше ФИО.")
+            elif check_user_language(message) == [('en',)]:
+                bot.send_message(message.chat.id, "Your phone number is heard. Write your name.")
             bot.register_next_step_handler(message, handle_name_user_message, artist_name, phone_number)
         
      
@@ -225,7 +248,10 @@ def handle_name_user_message(message, artist_name, phone_number):
         bot.send_message(message.chat.id,ban_string)
     else:
         name = message.text
-        bot.send_message(message.chat.id, "Ваше ФИО услышано. Напишите ваше сообщение.")
+        if check_user_language(message) == [('ru',)]:
+            bot.send_message(message.chat.id, "Ваше ФИО услышано. Напишите ваше сообщение.")
+        elif check_user_language(message) == [('en',)]:
+            bot.send_message(message.chat.id, "Your name is heard. Write your message.")
         bot.register_next_step_handler(message, handle_pers_message, artist_name, phone_number, name)
     
 
@@ -246,7 +272,10 @@ def handle_pers_message(message, artist_name, phone_number,name):
         yes_button = types.InlineKeyboardButton('✅', callback_data='pers_yes_button')
         no_button = types.InlineKeyboardButton('❌', callback_data='pers_no_button')
         markup4.add(yes_button, no_button)
-        bot.send_message(message.chat.id, "Вы согласны на обработку персональных данных?", reply_markup=markup4)
+        if check_user_language(message) == [('ru',)]:
+            bot.send_message(message.chat.id, "Вы согласны на обработку персональных данных?", reply_markup=markup4)
+        elif check_user_language(message) == [('en',)]:
+            bot.send_message(message.chat.id, "Do you agree to the processing of personal data?", reply_markup=markup4)
     
 @bot.callback_query_handler(func=lambda call: call.data.startswith('pers_no_button'))
 def pers_no_callback_handler(call):
@@ -255,7 +284,10 @@ def pers_no_callback_handler(call):
     else:
         bot.answer_callback_query(call.id)
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        bot.send_message(call.message.chat.id, "Вы отказались от обработки персональных данных. Приходите еще.")
+        if check_user_language(call.message) == [('ru',)]:
+            bot.send_message(call.message.chat.id, "Вы отказались от обработки персональных данных. Приходите еще.")
+        elif check_user_language(call.message) == [('en',)]:
+            bot.send_message(call.message.chat.id, "You refused to process personal data. Come again.")
     #Очистка словаря
         pers_dict.clear()       
     
@@ -277,7 +309,10 @@ def pers_yes_callback_handler(call):
     
     #Очистка словаря
         pers_dict.clear()
-        bot.send_message(call.message.chat.id, "Ваше сообщение отправлено артисту. Вскоре вы получите ответ.")
+        if check_user_language(call.message) == [('ru',)]:
+            bot.send_message(call.message.chat.id, "Ваше сообщение отправлено артисту. Вскоре вы получите ответ.")
+        elif check_user_language(call.message) == [('en',)]:
+            bot.send_message(call.message.chat.id, "Your message has been sent to the artist. Soon you will receive an answer.")
     
 
 def send_message_to_artist(artist_name, message_text, phone_number, user,name):
@@ -316,8 +351,10 @@ def artist_name_callback_handler(call):
         to_start_callback_handler_button = types.InlineKeyboardButton('Назад', callback_data='to_start_callback_handler_button')
 
         markup_artist1.add(to_start_callback_handler_button)
-
-        bot.send_message(call.message.chat.id, "Введите ваше имя/никнейм. С его помощью клиенты смогут обратиться к вам", reply_markup=markup_artist1)
+        if check_user_language(call.message) == [('ru',)]:
+            bot.send_message(call.message.chat.id, "Введите ваше имя/никнейм. С его помощью клиенты смогут обратиться к вам", reply_markup=markup_artist1)
+        elif check_user_language(call.message) == [('en',)]:
+            bot.send_message(call.message.chat.id, "Enter your name / nickname. With its help, clients will be able to contact you", reply_markup=markup_artist1)
 
         bot.register_next_step_handler(call.message, handle_artist_name)    
 
@@ -334,14 +371,25 @@ def handle_artist_name(message):
     else:
         if message.text == None: 
             markup_artist3_1 = types.InlineKeyboardMarkup() 
-            to_artist_name_callback_handler_button = types.InlineKeyboardButton('Назад', callback_data='to_artist_name_callback_handler_button')
-            markup_artist3_1.add(to_artist_name_callback_handler_button)
+            if check_user_language(message) == [('ru',)]:
+                to_artist_name_callback_handler_button = types.InlineKeyboardButton('Назад', callback_data='to_artist_name_callback_handler_button')
+                markup_artist3_1.add(to_artist_name_callback_handler_button)
+                bot.send_message(message.chat.id, "⚠      ошибка      ⚠ \nПопробуйте ещё раз", reply_markup=markup_artist3_1)
+            if check_user_language(message) == [('en',)]:
+                to_artist_name_callback_handler_button = types.InlineKeyboardButton('Back', callback_data='to_artist_name_callback_handler_button')
+                markup_artist3_1.add(to_artist_name_callback_handler_button)
+                bot.send_message(message.chat.id, "⚠      error      ⚠ \nTry again", reply_markup=markup_artist3_1)
+            
 
-            bot.send_message(message.chat.id, "⚠      ошибка      ⚠ \nПопробуйте ещё раз", reply_markup=markup_artist3_1)
+            
         else:
-            markup_artist2 = types.InlineKeyboardMarkup()     
-            to_artist_circle_callback_handler_button = types.InlineKeyboardButton('Все верно', callback_data='to_artist_circle_callback_handler_button')
-            to_artist_name_callback_handler_button = types.InlineKeyboardButton('Ввести еще раз', callback_data='to_artist_name_callback_handler_button')
+            markup_artist2 = types.InlineKeyboardMarkup()   
+            if check_user_language(message) == [('ru',)]:  
+                to_artist_circle_callback_handler_button = types.InlineKeyboardButton('Все верно', callback_data='to_artist_circle_callback_handler_button')
+                to_artist_name_callback_handler_button = types.InlineKeyboardButton('Ввести еще раз', callback_data='to_artist_name_callback_handler_button')
+            elif check_user_language(message) == [('en',)]:
+                to_artist_circle_callback_handler_button = types.InlineKeyboardButton('All right', callback_data='to_artist_circle_callback_handler_button')
+                to_artist_name_callback_handler_button = types.InlineKeyboardButton('Enter again', callback_data='to_artist_name_callback_handler_button')
             markup_artist2.add(to_artist_circle_callback_handler_button, to_artist_name_callback_handler_button)
 
             artist_name = message.text
@@ -352,15 +400,25 @@ def handle_artist_name(message):
             cursor.execute(f"SELECT * FROM artists WHERE artist_name = '{artist_name}'")
             record = cursor.fetchone()
             if record is not None:
-                markup_artist3_2 = types.InlineKeyboardMarkup() 
-                to_artist_name_callback_handler_button = types.InlineKeyboardButton('Ввести еще раз', callback_data='to_artist_name_callback_handler_button')
-                markup_artist3_2.add(to_artist_name_callback_handler_button)
-
-                bot.send_message(message.chat.id, f'''Артист с именем {artist_name} уже зарегистрирован. 
+                markup_artist3_2 = types.InlineKeyboardMarkup()
+                if check_user_language(message) == [('ru',)]:
+                    to_artist_name_callback_handler_button = types.InlineKeyboardButton('Ввести еще раз', callback_data='to_artist_name_callback_handler_button')
+                    markup_artist3_2.add(to_artist_name_callback_handler_button)
+                    bot.send_message(message.chat.id, f'''Артист с именем {artist_name} уже зарегистрирован. 
 Помните, что при попытке выдать себя за другого человека  Вы будете заблокированы навсегда''', reply_markup=markup_artist3_2)
+                elif check_user_language(message) == [('en',)]:
+                    to_artist_name_callback_handler_button = types.InlineKeyboardButton('Enter again', callback_data='to_artist_name_callback_handler_button')
+                    markup_artist3_2.add(to_artist_name_callback_handler_button)
+                    bot.send_message(message.chat.id, f'''The artist with the name {artist_name} is already registered. Помните, что при попытке выдать себя за другого человека  Вы будете заблокированы навсегда''')
+                
+
+                
             else:
                 users_dict[message.chat.id] = artist_name
-                bot.send_message(message.chat.id, f"Ваше имя {artist_name}, не так ли?", reply_markup=markup_artist2)
+                if check_user_language(message) == [('ru',)]:
+                    bot.send_message(message.chat.id, f"Ваше имя {artist_name}, не так ли?", reply_markup=markup_artist2)
+                elif check_user_language(message) == [('en',)]:
+                    bot.send_message(message.chat.id, f"Your name is {artist_name}, isn't it?", reply_markup=markup_artist2)
             conn.close()
 
     
@@ -371,9 +429,12 @@ def artist_circle_callback_handler(call):
         bot.send_message(call.message.chat.id, ban_string)
     else:
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        bot.send_message(call.message.chat.id, f'''Для подтверждения вашей личности вам необходимо записать видеосообщение с вашим лицом и фразой: 
+        if check_user_language(call.message) == [('ru',)]:
+            bot.send_message(call.message.chat.id, f'''Для подтверждения вашей личности вам необходимо записать видеосообщение с вашим лицом и фразой: 
 "Я - {users_dict[call.message.chat.id]}, хочу подтвердить регистрацию для ManagerBot". 
 После успешной проверки мы уведомим вас об успешной регистрации.''')
+        elif check_user_language(call.message) == [('en',)]:
+            bot.send_message(call.message.chat.id, f'''To confirm your identity, you need to record a video message with your face and the phrase:''')
         bot.register_next_step_handler(call.message, artist_handle_video)  
         
 
@@ -415,9 +476,9 @@ def artist_handle_video(message):
         total_members = response - 1
 
         markup_admin = types.InlineKeyboardMarkup() 
-        confirmation_button = types.InlineKeyboardButton(f'✅ 0/{total_members}', callback_data=f'confirmation_button {message.chat.id} {users_dict[message.chat.id]}')
-        again_button = types.InlineKeyboardButton(f'🔄 0/{total_members}', callback_data=f'again_button {message.chat.id} {users_dict[message.chat.id]}')
-        block_button = types.InlineKeyboardButton(f'❌ 0/{total_members}', callback_data=f'block_button {message.chat.id} {message.from_user.username}')
+        confirmation_button = types.InlineKeyboardButton(f'✅ 0/{total_members}', callback_data=f'confirmation_button {message.chat.id} {users_dict[message.chat.id]} {message.from_user.username}')
+        again_button = types.InlineKeyboardButton(f'🔄 0/{total_members}', callback_data=f'again_button {message.chat.id} {users_dict[message.chat.id]} {message.from_user.username}')
+        block_button = types.InlineKeyboardButton(f'❌ 0/{total_members}', callback_data=f'block_button {message.chat.id} {users_dict[message.chat.id]} {message.from_user.username}')
         markup_admin.add(confirmation_button, again_button, block_button)
 
 
@@ -429,20 +490,48 @@ User id: {message.chat.id}''', reply_markup=markup_admin)
         artist_confirmation[str(message.chat.id)] = [message1, message2]
 
 
+def sollution(total_voted0, total_voted1, total_voted2, artist_id, artist_name, user_name, message1, message2):
+    if total_voted0 > (total_voted1 + total_voted2):
+        bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id)
+        conn = sqlite3.connect('bot_manager_database.db')
+        cursor = conn.cursor()
+        bot.send_message(artist_id, "Регистрация успешно подтверждена. Теперь вам будут приходить коммерческие предложения.")
+        cursor.execute('INSERT INTO artists (artist_name, artist_id) VALUES (?, ?)', (artist_name, artist_id))
+        conn.commit()
+        bot.send_message(GetChannelId(), "Регистрация подтверждена")
+    elif total_voted0 == (total_voted1 + total_voted2) or total_voted2 == (total_voted0 + total_voted1) or total_voted1 > (total_voted0 + total_voted2):
+        bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id)
+        markup_artist4 = types.InlineKeyboardMarkup() 
+        again_button = types.InlineKeyboardButton('Попробовать ещё раз', callback_data='to_artist_circle_callback_handler_button')
+        markup_artist4.add(again_button)
+        bot.send_message(GetChannelId(), "Повторная проверка")
+        bot.send_message(artist_id, "Ваше видеосообщение было рассмотрено, но нам не удалось подтвердить вашу личность. Пожалуйста, попробуйте ещё раз.", reply_markup=markup_artist4)
+    elif total_voted2 > (total_voted0 + total_voted1):
+        bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id)
+        conn = sqlite3.connect('bot_manager_database.db')
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO banlist (user_name, user_id) VALUES (?, ?)', (user_name, artist_id))
+        conn.commit()
+        conn.close()
+        bot.send_message(GetChannelId(), "Пользователь заблокирован")
+        bot.send_message(artist_id, "Ваше видеосообщение было рассмотрено. Вы были заблокированы за попытку мошенничества.")
+    message2_id = message2.message_id
+    del message_and_admin_dict[message2_id]
 
 
-
-
-@bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'confirmation_button')
-def admin_confirmation_callback_handler(call):
-    if check_ban(call.message):
-        bot.send_message(call.message.chat.id, ban_string)
-    else:
-        artist_id = str(call.data.split()[1])
-        artist_name = call.data.split()[2]
-
-        message1 = artist_confirmation[artist_id][0]
-        message2 = artist_confirmation[artist_id][1]
+@bot.callback_query_handler(func=lambda call: call.data.split()[0] in ['confirmation_button', 'again_button', 'block_button'])
+def admin_edit_markup(call):
+    admin_id = str(call.from_user.id)
+    
+    artist_id = str(call.data.split()[1])
+    artist_name = call.data.split()[2]
+    user_name = call.data.split()[3]
+    message1 = artist_confirmation[artist_id][0]
+    message2 = artist_confirmation[artist_id][1]
+    message2_id = message2.message_id
+    if message2_id not in message_and_admin_dict:
+        message_and_admin_dict[message2_id] = []
+    if admin_id not in message_and_admin_dict[message2_id]:
         if message2.reply_markup and isinstance(message2.reply_markup, telebot.types.InlineKeyboardMarkup):
             for row in message2.reply_markup.keyboard:
                 row_info = []
@@ -453,9 +542,7 @@ def admin_confirmation_callback_handler(call):
                     }
                     row_info.append(button_info)
                 keyboard_info = row_info
-        else:
-            pass       
-
+        
         dict0 = keyboard_info[0]
         dict1 = keyboard_info[1]
         dict2 = keyboard_info[2]
@@ -470,103 +557,77 @@ def admin_confirmation_callback_handler(call):
         callback_data1 = dict1['callback_data']
         callback_data2 = dict2['callback_data']
 
-
-        total_voted = total_voted0 + total_voted1 + total_voted2 
-
         
-        print(total_voted, total_members-1)
-        if total_voted == total_members-1:
-            if total_voted0 >= total_voted2:
-                bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id)
-                conn = sqlite3.connect('bot_manager_database.db')
-                cursor = conn.cursor()
-                bot.send_message(artist_id, "Регистрация успешно подтверждена. Теперь вам будут приходить коммерческие предложения.")
-                cursor.execute('INSERT INTO artists (artist_name, artist_id) VALUES (?, ?)', (artist_name, artist_id))
-                conn.commit()
-                bot.send_message(GetChannelId(), "Регистрация подтверждена")
 
-            else:
-                
-                bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id)
-                markup_artist4 = types.InlineKeyboardMarkup() 
-                again_button = types.InlineKeyboardButton('Попробовать ещё раз', callback_data='to_artist_circle_callback_handler_button')
-                markup_artist4.add(again_button)
-                bot.send_message(GetChannelId(), "Повторная проверка")
-                bot.send_message(artist_id, "Ваше видеосообщение было рассмотрено, но нам не удалось подтвердить вашу личность. Пожалуйста, попробуйте ещё раз.", reply_markup=markup_artist4)
-        else:
+        if call.data.split()[0] == 'confirmation_button':
             markup = types.InlineKeyboardMarkup() 
             confirmation_button = types.InlineKeyboardButton(f'✅ {total_voted0 + 1}/{total_members}', callback_data=callback_data0)
             again_button = types.InlineKeyboardButton(f'🔄 {total_voted1}/{total_members}', callback_data=callback_data1)
             block_button = types.InlineKeyboardButton(f'❌ {total_voted2}/{total_members}', callback_data=callback_data2)
             markup.add(confirmation_button, again_button, block_button)
             artist_confirmation[artist_id][1] = bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id, reply_markup=markup)
+            total_voted0 += 1
+        elif call.data.split()[0] == 'again_button':
+            markup = types.InlineKeyboardMarkup() 
+            confirmation_button = types.InlineKeyboardButton(f'✅ {total_voted0}/{total_members}', callback_data=callback_data0)
+            again_button = types.InlineKeyboardButton(f'🔄 {total_voted1+1}/{total_members}', callback_data=callback_data1)
+            block_button = types.InlineKeyboardButton(f'❌ {total_voted2}/{total_members}', callback_data=callback_data2)
+            markup.add(confirmation_button, again_button, block_button)
+            artist_confirmation[artist_id][1] = bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id, reply_markup=markup)
+            total_voted1 += 1
+        elif call.data.split()[0] == 'block_button':
+            markup = types.InlineKeyboardMarkup() 
+            confirmation_button = types.InlineKeyboardButton(f'✅ {total_voted0}/{total_members}', callback_data=callback_data0)
+            again_button = types.InlineKeyboardButton(f'🔄 {total_voted1}/{total_members}', callback_data=callback_data1)
+            block_button = types.InlineKeyboardButton(f'❌ {total_voted2+1}/{total_members}', callback_data=callback_data2)
+            markup.add(confirmation_button, again_button, block_button)
+            artist_confirmation[artist_id][1] = bot.edit_message_reply_markup(chat_id=GetChannelId(), message_id=message2.message_id, reply_markup=markup)
+            total_voted2 += 1
+        
 
 
+        total_voted = total_voted0 + total_voted1 + total_voted2 
 
 
+        message_and_admin_dict[message2_id].append(admin_id)
 
-        # conn = sqlite3.connect('bot_manager_database.db')
-        # cursor = conn.cursor()
+        if total_voted == total_members:
+            sollution(total_voted0, total_voted1, total_voted2, artist_id, artist_name, user_name, message1, message2)
 
-        # #Удаление двух сообщений у других админов
-        # for key, value in admin_dict.items():
-        #     if str(value[2]) == str(artist_id) and str(key) != str(call.message.chat.id):
-        #         bot.delete_message(chat_id=key, message_id=value[0])
-        #         bot.delete_message(chat_id=key, message_id=value[1])
+    else:
+        bot.send_message(admin_id, "Проголосовать можно только один раз")
+
+
+# @bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'confirmation_button')
+# def admin_confirmation_callback_handler(call):
+#     admin_edit_markup(call)
+
+
+#         # conn = sqlite3.connect('bot_manager_database.db')
+#         # cursor = conn.cursor()
+
+#         # #Удаление двух сообщений у других админов
+#         # for key, value in admin_dict.items():
+#         #     if str(value[2]) == str(artist_id) and str(key) != str(call.message.chat.id):
+#         #         bot.delete_message(chat_id=key, message_id=value[0])
+#         #         bot.delete_message(chat_id=key, message_id=value[1])
             
         
-        # bot.send_message(artist_id, "Регистрация успешно подтверждена. Теперь вам будут приходить коммерческие предложения.")
-        # cursor.execute('INSERT INTO artists (artist_name, artist_id) VALUES (?, ?)', (artist_name, artist_id))
-        # conn.commit()
+#         # bot.send_message(artist_id, "Регистрация успешно подтверждена. Теперь вам будут приходить коммерческие предложения.")
+#         # cursor.execute('INSERT INTO artists (artist_name, artist_id) VALUES (?, ?)', (artist_name, artist_id))
+#         # conn.commit()
 
-        # conn.close()
+#         # conn.close()
 
-@bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'again_button')
-def admin_again_callback_handler(call):
-    if check_ban(call.message):
-        bot.send_message(call.message.chat.id, ban_string)
-    else:
-        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        artist_id = call.data.split()[1]
-
-
-        #Удаление двух сообщений у других админов
-        for key, value in admin_dict.items():
-            if str(value[2]) == str(artist_id) and str(key) != str(call.message.chat.id):
-                bot.delete_message(chat_id=key, message_id=value[0])
-                bot.delete_message(chat_id=key, message_id=value[1])
-
-        markup_artist4 = types.InlineKeyboardMarkup() 
-        again_button = types.InlineKeyboardButton('Попробовать ещё раз', callback_data='to_artist_circle_callback_handler_button')
-        markup_artist4.add(again_button)
-
-        bot.send_message(artist_id, "Ваше видеосообщение было рассмотрено, но нам не удалось подтвердить вашу личность. Пожалуйста, попробуйте ещё раз.", reply_markup=markup_artist4)
-
-        
-
-@bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'block_button')
-def admin_block_callback_handler(call):
-    if check_ban(call.message):
-        bot.send_message(call.message.chat.id, ban_string)
-    else:
-        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        artist_id = call.data.split()[1]
-        user_name = call.data.split()[2]
-        
-
-        conn = sqlite3.connect('bot_manager_database.db')
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO banlist (user_name, user_id) VALUES (?, ?)', (user_name, artist_id))
-        conn.commit()
-        conn.close()
-        #Удаление двух сообщений у других админов
-        for key, value in admin_dict.items():
-            if str(value[2]) == str(artist_id) and str(key) != str(call.message.chat.id):
-                bot.delete_message(chat_id=key, message_id=value[0])
-                bot.delete_message(chat_id=key, message_id=value[1])
-        bot.send_message(call.message.chat.id, "Пользователь заблокирован")
-        bot.send_message(artist_id, "Ваше видеосообщение было рассмотрено. Вы были заблокированы за попытку мошенничества.")
+# @bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'again_button')
+# def admin_again_callback_handler(call):
+#     admin_edit_markup(call)
     
+        
+
+# @bot.callback_query_handler(func=lambda call: call.data.split()[0] == 'block_button')
+# def admin_block_callback_handler(call):
+#     admin_edit_markup(call)
 
 @bot.message_handler(commands=['unblock'])
 def unblock(message):
@@ -647,9 +708,6 @@ def unblock_user_name_input(message):
         bot.send_message(message.chat.id, "Данный пользователь не заблокирован")
 
     conn.close()
-
-
-
 
 
 bot.polling(none_stop=True)
